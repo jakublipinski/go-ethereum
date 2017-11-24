@@ -88,11 +88,11 @@ func (self *StateDB) RawDumpContracts() Dump {
 			panic(err)
 		}
 
+		c = c + 1
 		if c%10000 == 0 {
 			log.Info("Dumping...", "i", c)
 		}
 
-		//		c = c + 1
 		//	if c > 100000 {
 		//			break
 		//}
