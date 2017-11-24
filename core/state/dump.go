@@ -17,10 +17,12 @@
 package state
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
 )
@@ -66,6 +68,52 @@ func (self *StateDB) RawDump() Dump {
 		for storageIt.Next() {
 			account.Storage[common.Bytes2Hex(self.trie.GetKey(storageIt.Key))] = common.Bytes2Hex(storageIt.Value)
 		}
+		dump.Accounts[common.Bytes2Hex(addr)] = account
+	}
+	return dump
+}
+
+func (self *StateDB) RawDumpContracts() Dump {
+	dump := Dump{
+		Root:     fmt.Sprintf("%x", self.trie.Hash()),
+		Accounts: make(map[string]DumpAccount),
+	}
+	c := 0
+	it := trie.NewIterator(self.trie.NodeIterator(nil))
+	for it.Next() {
+		addr := self.trie.GetKey(it.Key)
+
+		var data Account
+		if err := rlp.DecodeBytes(it.Value, &data); err != nil {
+			panic(err)
+		}
+
+		if c%10000 == 0 {
+			log.Info("Dumping...", "i", c)
+		}
+
+		c = c + 1
+		if c > 100000 {
+			break
+		}
+
+		if bytes.Equal(data.CodeHash, emptyCodeHash) || len(addr) == 0 {
+			continue
+		}
+
+		obj := newObject(nil, common.BytesToAddress(addr), data, nil)
+		account := DumpAccount{
+			Balance:  data.Balance.String(),
+			Nonce:    data.Nonce,
+			Root:     common.Bytes2Hex(data.Root[:]),
+			CodeHash: common.Bytes2Hex(data.CodeHash),
+			Code:     common.Bytes2Hex(obj.Code(self.db)),
+			//			Storage:  make(map[string]string),
+		}
+		//storageIt := trie.NewIterator(obj.getTrie(self.db).NodeIterator(nil))
+		//for storageIt.Next() {
+		//	account.Storage[common.Bytes2Hex(self.trie.GetKey(storageIt.Key))] = common.Bytes2Hex(storageIt.Value)
+		//}
 		dump.Accounts[common.Bytes2Hex(addr)] = account
 	}
 	return dump
