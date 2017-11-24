@@ -92,10 +92,10 @@ func (self *StateDB) RawDumpContracts() Dump {
 			log.Info("Dumping...", "i", c)
 		}
 
-		c = c + 1
-		if c > 100000 {
-			break
-		}
+		//		c = c + 1
+		//	if c > 100000 {
+		//			break
+		//}
 
 		if bytes.Equal(data.CodeHash, emptyCodeHash) || len(addr) == 0 {
 			continue
