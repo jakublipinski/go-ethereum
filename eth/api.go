@@ -336,13 +336,14 @@ func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber) (state.Dump, error
 }
 
 // DumpContracts retrieves the entire state of the database at a given block.
-func (api *PublicDebugAPI) DumpContracts(blockNr rpc.BlockNumber) (state.Dump, error) {
+func (api *PublicDebugAPI) DumpContracts(blockNr rpc.BlockNumber, filename string) error {
 	if blockNr == rpc.PendingBlockNumber {
 		// If we're dumping the pending state, we need to request
 		// both the pending block as well as the pending state from
 		// the miner and operate on those
 		_, stateDb := api.eth.miner.Pending()
-		return stateDb.RawDumpContracts(), nil
+		stateDb.RawDumpContracts(filename)
+		return nil
 	}
 	var block *types.Block
 	if blockNr == rpc.LatestBlockNumber {
@@ -351,13 +352,14 @@ func (api *PublicDebugAPI) DumpContracts(blockNr rpc.BlockNumber) (state.Dump, e
 		block = api.eth.blockchain.GetBlockByNumber(uint64(blockNr))
 	}
 	if block == nil {
-		return state.Dump{}, fmt.Errorf("block #%d not found", blockNr)
+		return fmt.Errorf("block #%d not found", blockNr)
 	}
 	stateDb, err := api.eth.BlockChain().StateAt(block.Root())
 	if err != nil {
-		return state.Dump{}, err
+		return err
 	}
-	return stateDb.RawDumpContracts(), nil
+	stateDb.RawDumpContracts(filename)
+	return nil
 }
 
 // PrivateDebugAPI is the collection of Ethereum full node APIs exposed over

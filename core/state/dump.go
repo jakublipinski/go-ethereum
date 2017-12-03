@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -34,6 +35,12 @@ type DumpAccount struct {
 	CodeHash string            `json:"codeHash"`
 	Code     string            `json:"code"`
 	Storage  map[string]string `json:"storage"`
+}
+
+type DumpContract struct {
+	Address  string `json:"address"`
+	Balance  string `json:"balance"`
+	CodeHash string `json:"codeHash"`
 }
 
 type Dump struct {
@@ -73,7 +80,56 @@ func (self *StateDB) RawDump() Dump {
 	return dump
 }
 
-func (self *StateDB) RawDumpContracts() Dump {
+func (self *StateDB) RawDumpContracts(filename string) {
+	i := 0
+	f, err := os.Create(filename)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	enc := json.NewEncoder(f)
+	f.WriteString("{\"rootHash\":\"")
+	f.WriteString(fmt.Sprintf("%x", self.trie.Hash()))
+	f.WriteString("\",\"contracts\":[")
+	it := trie.NewIterator(self.trie.NodeIterator(nil))
+	for it.Next() {
+		addr := self.trie.GetKey(it.Key)
+
+		var data Account
+		if err := rlp.DecodeBytes(it.Value, &data); err != nil {
+			panic(err)
+		}
+
+		i = i + 1
+		if i%100000 == 0 {
+			log.Info("Dumping...", "i", i)
+		}
+
+		if bytes.Equal(data.CodeHash, emptyCodeHash) ||
+			len(addr) == 0 {
+			continue
+		}
+
+		contract := DumpContract{
+			Address: common.Bytes2Hex(addr),
+			Balance: data.Balance.String(),
+			//			Nonce:    data.Nonce,
+			//			Root:     common.Bytes2Hex(data.Root[:]),
+			CodeHash: common.Bytes2Hex(data.CodeHash),
+			//			Code:     common.Bytes2Hex(obj.Code(self.db)),
+			//			Storage:  make(map[string]string),
+		}
+		//storageIt := trie.NewIterator(obj.getTrie(self.db).NodeIterator(nil))
+		//for storageIt.Next() {
+		//	account.Storage[common.Bytes2Hex(self.trie.GetKey(storageIt.Key))] = common.Bytes2Hex(storageIt.Value)
+		//}
+		enc.Encode(contract)
+		f.WriteString(",")
+	}
+	f.WriteString("]}")
+}
+
+func (self *StateDB) RawDumpContracts2() Dump {
 	dump := Dump{
 		Root:     fmt.Sprintf("%x", self.trie.Hash()),
 		Accounts: make(map[string]DumpAccount),

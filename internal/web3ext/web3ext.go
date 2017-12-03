@@ -229,7 +229,7 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'dumpContracts',
 			call: 'debug_dumpContracts',
-			params: 1
+			params: 2
 		}),
 		new web3._extend.Method({
 			name: 'chaindbProperty',
