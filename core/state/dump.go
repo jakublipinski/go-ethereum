@@ -93,20 +93,22 @@ func (self *StateDB) RawDumpContracts(filename string) {
 	f.WriteString("\",\"contracts\":[")
 	it := trie.NewIterator(self.trie.NodeIterator(nil))
 	for it.Next() {
+		if i%100000 == 0 {
+			log.Info("Dumping...", "i", i)
+		}
+		i = i + 1
+
 		addr := self.trie.GetKey(it.Key)
+		if len(addr) == 0 {
+			continue
+		}
 
 		var data Account
 		if err := rlp.DecodeBytes(it.Value, &data); err != nil {
 			panic(err)
 		}
 
-		i = i + 1
-		if i%100000 == 0 {
-			log.Info("Dumping...", "i", i)
-		}
-
-		if bytes.Equal(data.CodeHash, emptyCodeHash) ||
-			len(addr) == 0 {
+		if bytes.Equal(data.CodeHash, emptyCodeHash) {
 			continue
 		}
 
